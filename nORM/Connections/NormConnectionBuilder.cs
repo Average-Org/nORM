@@ -1,4 +1,3 @@
-using System.Data;
 using System.Data.Entity.Core;
 
 namespace nORM.Connections;
@@ -18,6 +17,23 @@ public class NormConnectionBuilder(DatabaseProviderType databaseType)
         ConnectionString = $"Data Source={fileName}";
 
         return this;
+    }
+    
+    public NormConnectionBuilder UseInMemoryDataSource()
+    {
+        if (DatabaseProviderType != DatabaseProviderType.Sqlite)
+        {
+            throw new ProviderIncompatibleException("You cannot use a in-memory data source in: " + DatabaseProviderType);
+        }
+
+        ConnectionString = "Data Source=:memory:";
+
+        return this;
+    }
+    
+    public INormConnection BuildAndConnect()
+    {
+        return Build(true);
     }
     
     public INormConnection Build(bool autoConnect = false)

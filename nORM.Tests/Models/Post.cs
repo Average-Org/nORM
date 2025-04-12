@@ -17,7 +17,7 @@ public class Post : NormEntity
     public string Description { get; set; }
     
     [Column("author_id")]
-    public string AuthorId { get; set; }
+    public int AuthorId { get; set; }
     
     [Column("created_at")]
     public DateTime CreatedAt { get; set; }

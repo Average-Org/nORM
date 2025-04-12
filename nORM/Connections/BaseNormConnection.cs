@@ -1,5 +1,6 @@
 using System.Data;
 using nORM.Models;
+using nORM.Models.Context;
 using nORM.Models.Properties;
 
 namespace nORM.Connections;
@@ -24,4 +25,6 @@ public abstract class BaseNormConnection : INormConnection
         return (ICollectionContext<T>)_collectionContexts[typeof(T)];
     }
 
+    public abstract object ExecuteScalar(IExecutionProperties executionProperties);
+    public abstract IDbTransaction BeginTransaction();
 }

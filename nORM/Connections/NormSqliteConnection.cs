@@ -34,48 +34,48 @@ public class NormSqliteConnection : BaseNormConnection
             throw;
         }
     }
-    
+
     public override IDataReader ExecuteQuery(IExecutionProperties properties)
     {
-        if (properties is not SqlExecutionProperties {} sqlQuery)
+        if (properties is not SqlExecutionProperties { } sqlQuery)
         {
             throw new ProviderIncompatibleException(
                 "You attempted to pass execution properties that do not match the connection type");
         }
-        
+
         var command = _connection.CreateCommand();
-        command.CommandText = sqlQuery.Query;
+        command.CommandText = sqlQuery.ToString();
         return command.ExecuteReader();
     }
 
     public override void ExecuteNonQuery(IExecutionProperties executionProperties)
     {
-        if (executionProperties is not SqlExecutionProperties {} sqlQuery)
+        if (executionProperties is not SqlExecutionProperties { } sqlQuery)
         {
             throw new ProviderIncompatibleException(
                 "You attempted to pass execution properties that do not match the connection type");
         }
-        
+
         var command = _connection.CreateCommand();
-        command.CommandText = sqlQuery.Query;
+        command.CommandText = sqlQuery.ToString();
         command.ExecuteNonQuery();
     }
 
     public override List<Dictionary<string, object>> Query(IExecutionProperties executionProperties)
     {
-        if(executionProperties is not SqlExecutionProperties {} sqlQuery)
+        if (executionProperties is not SqlExecutionProperties { } sqlQuery)
         {
             throw new ProviderIncompatibleException(
                 "You attempted to pass execution properties that do not match the connection type");
         }
-        
+
         var command = _connection.CreateCommand();
-        command.CommandText = sqlQuery.Query;
-        
+        command.CommandText = sqlQuery.ToString();
+
         var reader = command.ExecuteReader();
-        
+
         var result = new List<Dictionary<string, object>>();
-        
+
         while (reader.Read())
         {
             var row = new Dictionary<string, object>();
@@ -83,11 +83,30 @@ public class NormSqliteConnection : BaseNormConnection
             {
                 row[reader.GetName(i)] = reader.GetValue(i);
             }
+
             result.Add(row);
         }
-        
+
         reader.Close();
-        
+
         return result;
+    }
+
+    public override IDbTransaction BeginTransaction()
+    {
+        return _connection.BeginTransaction();
+    }
+
+    public override object ExecuteScalar(IExecutionProperties executionProperties)
+    {
+        if (executionProperties is not SqlExecutionProperties { } sqlQuery)
+        {
+            throw new ProviderIncompatibleException(
+                "You attempted to pass execution properties that do not match the connection type");
+        }
+
+        var command = _connection.CreateCommand();
+        command.CommandText = sqlQuery.ToString();
+        return command.ExecuteScalar() ?? DBNull.Value;
     }
 }

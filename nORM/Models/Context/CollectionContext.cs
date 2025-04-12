@@ -1,10 +1,13 @@
+using System.Data;
+using System.Globalization;
+using System.Linq.Expressions;
 using System.Reflection;
 using nORM.Attributes;
 using nORM.Builders.Queries;
 using nORM.Connections;
 using nORM.Models.Properties;
 
-namespace nORM.Models;
+namespace nORM.Models.Context;
 
 public class CollectionContext<T> : ICollectionContext<T> where T : NormEntity
 {
@@ -14,34 +17,103 @@ public class CollectionContext<T> : ICollectionContext<T> where T : NormEntity
     {
         _normConnection = normConnection;
     }
+
+    public bool Truncate()
+    {
+        var deleteQuery = SqliteQueryBuilder.Instance
+            .GetTruncateQuery<T>();
+        
+        using var reader = _normConnection.ExecuteQuery(deleteQuery);
+        return reader.Read();
+    }
+
+    public IDbTransaction BeginTransaction()
+    {
+        return _normConnection.BeginTransaction();
+    }
+
+    public bool Remove(T entity)
+    {
+        var deleteQuery = SqliteQueryBuilder.Instance
+            .GetDeleteQuery(entity);
+        
+        using var reader = _normConnection.ExecuteQuery(deleteQuery);
+        return reader.Read();
+    }
     
     public T Insert(T entity)
     {
-        var sqlBuilder = new SqliteQueryBuilder();
-        var addQuery = sqlBuilder
-            .GetInsertQuery(entity)
-            .AppendRawText("; SELECT last_insert_rowid();");
+        var addQuery = SqliteQueryBuilder.Instance
+            .GetInsertQuery(entity);
         
-        using var reader = _normConnection.ExecuteQuery(addQuery);
-
-        int lastInsertId = 0;
-        if (reader.Read())
-        {
-            for (int i = 0; i < reader.FieldCount; i++)
-            {
-                lastInsertId = reader.GetInt32(i);
-                break;
-            }
-        }    
-        
-        entity.SetId(lastInsertId);
+        entity.SetId(_normConnection.ExecuteScalar(addQuery));
         
         return entity;
     }
+    
+    public T? FindOne(Expression<Func<T, bool>> predicate)
+    {
+        var selectQuery = SqliteQueryBuilder.Instance
+            .GetSelectQuery(predicate);
+
+        using var reader = _normConnection.ExecuteQuery(selectQuery);
+
+        if (!reader.Read())
+        {
+            return default;
+        }
+
+        var entity = Activator.CreateInstance<T>();
+
+        foreach (var property in typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance))
+        {
+            var columnName = property.GetCustomAttribute<ColumnAttribute>();
+            if (columnName == null)
+                continue;
+
+            var value = reader[columnName.Name];
+            if (value is DBNull)
+                continue;
+
+            try
+            {
+                var targetType = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
+
+                object? convertedValue;
+
+                if (targetType == typeof(DateTime))
+                {
+                    // try parsing manually using system culture fallback
+                    var raw = value.ToString()!;
+                    Console.WriteLine(raw);
+                    var parsed = DateTime.Parse(raw, null, DateTimeStyles.RoundtripKind);
+                    convertedValue = DateTime.SpecifyKind(parsed, DateTimeKind.Utc);
+                }
+                else
+                {
+                    convertedValue = Convert.ChangeType(value, targetType);
+                }
+
+                property.SetValue(entity, convertedValue);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception(
+                    $"Error setting property '{property.Name}' with value '{value}' (type {value?.GetType()?.Name})",
+                    ex
+                );
+            }
+        }
+
+
+        return entity;
+    }
+
 
     public static ICollectionContext<T> Create(INormConnection normConnection)
     {
-        var sqlBuilder = new SqliteQueryBuilder();
+        var sqlBuilder = SqliteQueryBuilder.Instance;
+        
         var addQuery = sqlBuilder
             .GetCreateCollectionQuery<T>();
 
