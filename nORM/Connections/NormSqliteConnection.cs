@@ -1,0 +1,93 @@
+using System.Data;
+using System.Data.Entity.Core;
+using System.Data.SQLite;
+using nORM.Models;
+using nORM.Models.Properties;
+
+namespace nORM.Connections;
+
+public class NormSqliteConnection : BaseNormConnection
+{
+    private readonly SQLiteConnection _connection;
+
+    public NormSqliteConnection(string connectionString)
+    {
+        _connection = new SQLiteConnection(connectionString);
+    }
+
+    public override IDbConnection GetDbConnection()
+    {
+        return _connection;
+    }
+
+
+    public override INormConnection Connect()
+    {
+        try
+        {
+            _connection.OpenAndReturn();
+            return this;
+        }
+        catch (Exception ex)
+        {
+            //TODO: Replace with logging abstraction
+            throw;
+        }
+    }
+    
+    public override IDataReader ExecuteQuery(IExecutionProperties properties)
+    {
+        if (properties is not SqlExecutionProperties {} sqlQuery)
+        {
+            throw new ProviderIncompatibleException(
+                "You attempted to pass execution properties that do not match the connection type");
+        }
+        
+        var command = _connection.CreateCommand();
+        command.CommandText = sqlQuery.Query;
+        return command.ExecuteReader();
+    }
+
+    public override void ExecuteNonQuery(IExecutionProperties executionProperties)
+    {
+        if (executionProperties is not SqlExecutionProperties {} sqlQuery)
+        {
+            throw new ProviderIncompatibleException(
+                "You attempted to pass execution properties that do not match the connection type");
+        }
+        
+        var command = _connection.CreateCommand();
+        command.CommandText = sqlQuery.Query;
+        command.ExecuteNonQuery();
+    }
+
+    public override List<Dictionary<string, object>> Query(IExecutionProperties executionProperties)
+    {
+        if(executionProperties is not SqlExecutionProperties {} sqlQuery)
+        {
+            throw new ProviderIncompatibleException(
+                "You attempted to pass execution properties that do not match the connection type");
+        }
+        
+        var command = _connection.CreateCommand();
+        command.CommandText = sqlQuery.Query;
+        
+        var reader = command.ExecuteReader();
+        
+        var result = new List<Dictionary<string, object>>();
+        
+        while (reader.Read())
+        {
+            var row = new Dictionary<string, object>();
+            for (int i = 0; i < reader.FieldCount; i++)
+            {
+                row[reader.GetName(i)] = reader.GetValue(i);
+            }
+            result.Add(row);
+        }
+        
+        reader.Close();
+        
+        return result;
+    }
+}
