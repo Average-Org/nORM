@@ -10,5 +10,6 @@ public interface ICollectionContext<T> where T : NormEntity
     public bool Truncate();
     public IDbTransaction BeginTransaction();
     public T? FindOne(Expression<Func<T, bool>> predicate);
+    public IEnumerable<T> InsertMany(IEnumerable<T> entities);
 
 }

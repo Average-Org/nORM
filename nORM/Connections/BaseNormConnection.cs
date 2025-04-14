@@ -8,6 +8,7 @@ namespace nORM.Connections;
 public abstract class BaseNormConnection : INormConnection
 {
     protected Dictionary<Type, object> _collectionContexts = new();
+    public abstract DatabaseProviderType DatabaseProviderType { get; }
     public abstract IDbConnection GetDbConnection();
     public abstract INormConnection Connect();
     public abstract void ExecuteNonQuery(IExecutionProperties executionProperties);
@@ -21,10 +22,12 @@ public abstract class BaseNormConnection : INormConnection
             return (ICollectionContext<T>)_collectionContexts[typeof(T)];
         }
 
-        _collectionContexts[typeof(T)] = CollectionContext<T>.Create(this);
+        _collectionContexts[typeof(T)] = SqlCollectionContext<T>.Create(this);
         return (ICollectionContext<T>)_collectionContexts[typeof(T)];
     }
 
     public abstract object ExecuteScalar(IExecutionProperties executionProperties);
     public abstract IDbTransaction BeginTransaction();
+    
+    public abstract void Dispose();
 }

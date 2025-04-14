@@ -7,6 +7,7 @@ namespace nORM.Connections;
 
 public interface INormConnection
 {
+    DatabaseProviderType DatabaseProviderType { get; }
     IDbConnection GetDbConnection();
     INormConnection Connect();
 
@@ -17,4 +18,5 @@ public interface INormConnection
 
     public ICollectionContext<T> Collection<T>() where T : NormEntity;
     public IDbTransaction BeginTransaction();
+    public void Dispose();
 }

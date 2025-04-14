@@ -7,7 +7,8 @@ public class SqlExecutionProperties(StringBuilder query, string? workingCollecti
     public StringBuilder Query { get; set; } = query;
     public string CollectionContext { get; } = workingCollectionName ?? string.Empty;
 
-    public SqlExecutionProperties(string query) : this(new StringBuilder(query), null)
+    public SqlExecutionProperties(string query, string? collectionContext = null)
+        : this(new StringBuilder(query), collectionContext)
     {
     }
 

@@ -2,5 +2,6 @@ namespace nORM.Connections;
 
 public enum DatabaseProviderType
 {
-    Sqlite
+    Sqlite,
+    MySql
 }

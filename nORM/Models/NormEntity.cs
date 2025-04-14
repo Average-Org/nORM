@@ -22,7 +22,13 @@ public abstract class NormEntity
             t.GetCustomAttribute<CollectionNameAttribute>()?.CollectionName ?? t.Name);
     }
 
-    public static Span<PropertyInfo> GetProperties(Type type)
+    public static Span<PropertyInfo> GetPropertiesSpan(Type type)
+    {
+        return Properties.GetOrAdd(type, t =>
+            t.GetProperties(BindingFlags.Public | BindingFlags.Instance));
+    }
+    
+    public static IEnumerable<PropertyInfo> GetProperties(Type type)
     {
         return Properties.GetOrAdd(type, t =>
             t.GetProperties(BindingFlags.Public | BindingFlags.Instance));
@@ -32,7 +38,7 @@ public abstract class NormEntity
     {
         return PrimaryKeys.GetOrAdd(Type, t =>
         {
-            foreach(var property in GetProperties(t))
+            foreach(var property in GetPropertiesSpan(t))
             {
                 if (property.GetCustomAttributes(typeof(PrimaryKeyAttribute), true).Length != 0)
                 {
@@ -48,7 +54,7 @@ public abstract class NormEntity
     {
         return PrimaryKeys.GetOrAdd(type, t =>
         {
-            foreach (var property in GetProperties(t))
+            foreach (var property in GetPropertiesSpan(t))
             {
                 if (property.GetCustomAttributes(typeof(PrimaryKeyAttribute), true).Length != 0)
                 {
@@ -73,7 +79,7 @@ public abstract class NormEntity
             return false;
 
         var other = (NormEntity)obj;
-        var props = GetProperties(Type);
+        var props = GetPropertiesSpan(Type);
 
         foreach (var prop in props)
         {
@@ -102,7 +108,7 @@ public abstract class NormEntity
         unchecked
         {
             int hash = 17;
-            foreach (var prop in GetProperties(Type))
+            foreach (var prop in GetPropertiesSpan(Type))
             {
                 var value = prop.GetValue(this);
 
