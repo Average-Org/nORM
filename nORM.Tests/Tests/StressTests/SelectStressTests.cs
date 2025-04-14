@@ -34,7 +34,6 @@ public class SelectStressTests
         {
             Title = $"Title 1",
             Description = $"Description 2",
-            AuthorId = 1,
             CreatedAt = now
         };
         collection.Insert(post);

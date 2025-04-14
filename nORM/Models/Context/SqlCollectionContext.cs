@@ -10,11 +10,23 @@ using nORM.Models.Properties;
 
 namespace nORM.Models.Context;
 
+/// <summary>
+/// Implementation of the collection context for SQL-based database providers.
+/// </summary>
+/// <typeparam name="T">The entity type that this collection manages.</typeparam>
+/// <remarks>
+/// This class provides CRUD operations for entities in SQL databases,
+/// handling SQL-specific functionality like schema management and query execution.
+/// </remarks>
 public class SqlCollectionContext<T> : ICollectionContext<T> where T : NormEntity
 {
     private readonly INormConnection _normConnection;
     private readonly SqlQueryBuilder _queryBuilder;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="SqlCollectionContext{T}"/> class.
+    /// </summary>
+    /// <param name="normConnection">The database connection to use.</param>
     private SqlCollectionContext(INormConnection normConnection)
     {
         _normConnection = normConnection;
@@ -22,6 +34,10 @@ public class SqlCollectionContext<T> : ICollectionContext<T> where T : NormEntit
             as SqlQueryBuilder ?? throw new InvalidOperationException("QueryBuilder is not SqlQueryBuilder");
     }
 
+    /// <summary>
+    /// Removes all entities from the collection.
+    /// </summary>
+    /// <returns>true if the operation was successful; otherwise, false.</returns>
     public bool Truncate()
     {
         var deleteQuery = _queryBuilder.GetTruncateQuery<T>();
@@ -30,11 +46,20 @@ public class SqlCollectionContext<T> : ICollectionContext<T> where T : NormEntit
         return reader.Read();
     }
 
+    /// <summary>
+    /// Begins a new transaction for operations on this collection.
+    /// </summary>
+    /// <returns>A new database transaction.</returns>
     public IDbTransaction BeginTransaction()
     {
         return _normConnection.BeginTransaction();
     }
 
+    /// <summary>
+    /// Removes an entity from the collection.
+    /// </summary>
+    /// <param name="entity">The entity to remove.</param>
+    /// <returns>true if the entity was successfully removed; otherwise, false.</returns>
     public bool Remove(T entity)
     {
         var deleteQuery = _queryBuilder
@@ -44,11 +69,22 @@ public class SqlCollectionContext<T> : ICollectionContext<T> where T : NormEntit
         return reader.Read();
     }
 
+    /// <summary>
+    /// Inserts a new entity into the collection.
+    /// </summary>
+    /// <param name="entity">The entity to insert.</param>
+    /// <returns>The inserted entity with any database-generated values populated.</returns>
     public T Insert(T entity)
     {
         return Insert(entity, null);
     }
 
+    /// <summary>
+    /// Inserts a new entity into the collection using the specified transaction.
+    /// </summary>
+    /// <param name="entity">The entity to insert.</param>
+    /// <param name="transaction">The transaction in which to perform the insert.</param>
+    /// <returns>The inserted entity with any database-generated values populated.</returns>
     public T Insert(T entity, IDbTransaction? transaction)
     {
         var addQuery = _queryBuilder
@@ -60,6 +96,11 @@ public class SqlCollectionContext<T> : ICollectionContext<T> where T : NormEntit
         return entity;
     }
 
+    /// <summary>
+    /// Inserts multiple entities into the collection as a batch operation.
+    /// </summary>
+    /// <param name="entities">The collection of entities to insert.</param>
+    /// <returns>The collection of inserted entities with any database-generated values populated.</returns>
     public IEnumerable<T> InsertMany(IEnumerable<T> entities)
     {
         var insertedEntities = new List<T>();
@@ -76,6 +117,11 @@ public class SqlCollectionContext<T> : ICollectionContext<T> where T : NormEntit
         return insertedEntities;
     }
 
+    /// <summary>
+    /// Finds a single entity in the collection that matches the specified predicate.
+    /// </summary>
+    /// <param name="predicate">A lambda expression that defines the conditions to match.</param>
+    /// <returns>The matching entity, or null if no match is found.</returns>
     public T? FindOne(Expression<Func<T, bool>> predicate)
     {
         var selectQuery = _queryBuilder
@@ -95,6 +141,12 @@ public class SqlCollectionContext<T> : ICollectionContext<T> where T : NormEntit
         return entity;
     }
 
+    /// <summary>
+    /// Parses all properties from a data reader into an entity instance.
+    /// </summary>
+    /// <param name="properties">The properties to parse.</param>
+    /// <param name="reader">The data reader containing the values.</param>
+    /// <param name="entity">The entity instance to populate.</param>
     private void ParseAllProperties(Span<PropertyInfo> properties, IDataReader reader, T entity)
     {
         foreach (var property in properties)
@@ -114,6 +166,13 @@ public class SqlCollectionContext<T> : ICollectionContext<T> where T : NormEntit
         }
     }
 
+    /// <summary>
+    /// Parses a single property value from a data reader into an entity property.
+    /// </summary>
+    /// <param name="property">The property to set.</param>
+    /// <param name="value">The value from the data reader.</param>
+    /// <param name="entity">The entity instance to update.</param>
+    /// <exception cref="Exception">Thrown if the property value cannot be set.</exception>
     private void ParseObjectFromReader(PropertyInfo property, object value, T entity)
     {
         try
@@ -134,6 +193,12 @@ public class SqlCollectionContext<T> : ICollectionContext<T> where T : NormEntit
         }
     }
 
+    /// <summary>
+    /// Parses a DateTime value from a database-specific format.
+    /// </summary>
+    /// <param name="value">The value to parse.</param>
+    /// <returns>A DateTime object representing the value.</returns>
+    /// <exception cref="NotImplementedException">Thrown if the database provider is not supported.</exception>
     private object ParseDateTime(object value)
     {
         object? convertedValue;
@@ -165,6 +230,12 @@ public class SqlCollectionContext<T> : ICollectionContext<T> where T : NormEntit
         return convertedValue;
     }
 
+    /// <summary>
+    /// Creates a new collection context for the specified connection.
+    /// </summary>
+    /// <param name="normConnection">The database connection to use.</param>
+    /// <returns>A new collection context instance.</returns>
+    /// <exception cref="InvalidOperationException">Thrown if the query builder is not SQL-compatible.</exception>
     public static ICollectionContext<T> Create(INormConnection normConnection)
     {
         var sqlBuilder = QueryBuilder.GetQueryBuilderForProvider(normConnection.DatabaseProviderType)
@@ -175,6 +246,11 @@ public class SqlCollectionContext<T> : ICollectionContext<T> where T : NormEntit
         return new SqlCollectionContext<T>(normConnection);
     }
 
+    /// <summary>
+    /// Ensures that the database schema exists and matches the entity model.
+    /// </summary>
+    /// <param name="normConnection">The database connection to use.</param>
+    /// <param name="sqlBuilder">The SQL query builder to use.</param>
     private static void EnsureCollectionSchema(INormConnection normConnection, SqlQueryBuilder sqlBuilder)
     {
         // Add the collection table if it doesn't exist
@@ -231,6 +307,14 @@ public class SqlCollectionContext<T> : ICollectionContext<T> where T : NormEntit
         AddAnyMissingColumns(normConnection, properties, columns.Select(x => x.Name).ToList(), addQuery);
     }
 
+    /// <summary>
+    /// Alters a column's data type in the database.
+    /// </summary>
+    /// <param name="normConnection">The database connection to use.</param>
+    /// <param name="collectionName">The name of the collection (table).</param>
+    /// <param name="columnName">The name of the column to alter.</param>
+    /// <param name="columnType">The new data type for the column.</param>
+    /// <param name="builder">The SQL query builder to use.</param>
     private static void AlterColumn(INormConnection normConnection,
         string? collectionName, string columnName, string columnType, SqlQueryBuilder builder)
     {
@@ -245,6 +329,12 @@ public class SqlCollectionContext<T> : ICollectionContext<T> where T : NormEntit
         normConnection.ExecuteNonQuery(alterQuery);
     }
 
+    /// <summary>
+    /// Extracts column information from database query results.
+    /// </summary>
+    /// <param name="tableInfoResults">The query results containing table information.</param>
+    /// <param name="properties">The properties of the entity type.</param>
+    /// <returns>A list of database columns with their names and types.</returns>
     private static List<DatabaseColumn> ExtractColumnNames(IEnumerable<IDictionary<string, object>> tableInfoResults,
         PropertyInfo[] properties)
     {
@@ -284,6 +374,13 @@ public class SqlCollectionContext<T> : ICollectionContext<T> where T : NormEntit
         return columns;
     }
 
+    /// <summary>
+    /// Adds any missing columns to the database table.
+    /// </summary>
+    /// <param name="normConnection">The database connection to use.</param>
+    /// <param name="properties">The properties of the entity type.</param>
+    /// <param name="columnNames">The existing column names in the database.</param>
+    /// <param name="addQuery">The execution properties containing the collection context.</param>
     private static void AddAnyMissingColumns(INormConnection normConnection, Span<PropertyInfo> properties,
         List<string> columnNames,
         IExecutionProperties addQuery)
@@ -312,6 +409,13 @@ public class SqlCollectionContext<T> : ICollectionContext<T> where T : NormEntit
         }
     }
 
+    /// <summary>
+    /// Adds a new column to the database table.
+    /// </summary>
+    /// <param name="normConnection">The database connection to use.</param>
+    /// <param name="collectionName">The name of the collection (table).</param>
+    /// <param name="currentColumnName">The name of the column to add.</param>
+    /// <param name="columnType">The data type of the column.</param>
     private static void AddColumn(INormConnection normConnection, string? collectionName, string currentColumnName,
         string columnType)
     {
@@ -320,6 +424,11 @@ public class SqlCollectionContext<T> : ICollectionContext<T> where T : NormEntit
         normConnection.ExecuteNonQuery(new SqlExecutionProperties(alterQuery));
     }
 
+    /// <summary>
+    /// Gets the column names defined in the entity class.
+    /// </summary>
+    /// <param name="properties">The properties of the entity type.</param>
+    /// <returns>An array of column names.</returns>
     private static string[] GetClassPropertyColumns(Span<PropertyInfo> properties)
     {
         var columnNames = new List<string>();
@@ -336,6 +445,12 @@ public class SqlCollectionContext<T> : ICollectionContext<T> where T : NormEntit
         return columnNames.ToArray();
     }
 
+    /// <summary>
+    /// Drops a column from the database table.
+    /// </summary>
+    /// <param name="normConnection">The database connection to use.</param>
+    /// <param name="collectionName">The name of the collection (table).</param>
+    /// <param name="currentColumnName">The name of the column to drop.</param>
     private static void DropColumn(INormConnection normConnection, string? collectionName, string currentColumnName)
     {
         // Column is no longer in use, drop it

@@ -2,11 +2,31 @@ using System.Data.Entity.Core;
 
 namespace nORM.Connections;
 
+/// <summary>
+/// Provides a fluent interface for building database connections with various providers.
+/// </summary>
+/// <remarks>
+/// This builder enables configuring and creating database connections with different
+/// providers in a consistent way, abstracting away provider-specific connection details.
+/// </remarks>
 public class NormConnectionBuilder(DatabaseProviderType databaseType)
 {
+    /// <summary>
+    /// Gets or sets the type of database provider to use for the connection.
+    /// </summary>
     public DatabaseProviderType DatabaseProviderType { get; set; } = databaseType;
+    
+    /// <summary>
+    /// Gets or sets the connection string for the database connection.
+    /// </summary>
     private string ConnectionString { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Sets an explicit data source for SQLite connections.
+    /// </summary>
+    /// <param name="dataSource">The path to the SQLite database file, or ":memory:" for in-memory databases.</param>
+    /// <returns>The builder instance for chaining calls.</returns>
+    /// <exception cref="ProviderIncompatibleException">Thrown if the current provider is not SQLite.</exception>
     public NormConnectionBuilder SetExplicitDataSource(string dataSource)
     {
         if (DatabaseProviderType != DatabaseProviderType.Sqlite)
@@ -29,6 +49,12 @@ public class NormConnectionBuilder(DatabaseProviderType databaseType)
         return this;
     }
 
+    /// <summary>
+    /// Sets the hostname for MySQL connections.
+    /// </summary>
+    /// <param name="hostName">The hostname of the MySQL server.</param>
+    /// <returns>The builder instance for chaining calls.</returns>
+    /// <exception cref="ProviderIncompatibleException">Thrown if the current provider is not MySQL.</exception>
     public NormConnectionBuilder SetHostname(string hostName)
     {
         if (DatabaseProviderType != DatabaseProviderType.MySql)
@@ -41,6 +67,12 @@ public class NormConnectionBuilder(DatabaseProviderType databaseType)
         return this;
     }
     
+    /// <summary>
+    /// Sets the username for MySQL connections.
+    /// </summary>
+    /// <param name="username">The username for authenticating with the MySQL server.</param>
+    /// <returns>The builder instance for chaining calls.</returns>
+    /// <exception cref="ProviderIncompatibleException">Thrown if the current provider is not MySQL.</exception>
     public NormConnectionBuilder SetUsername(string username)
     {
         if (DatabaseProviderType != DatabaseProviderType.MySql)
@@ -53,6 +85,12 @@ public class NormConnectionBuilder(DatabaseProviderType databaseType)
         return this;
     }
     
+    /// <summary>
+    /// Sets the password for MySQL connections.
+    /// </summary>
+    /// <param name="password">The password for authenticating with the MySQL server.</param>
+    /// <returns>The builder instance for chaining calls.</returns>
+    /// <exception cref="ProviderIncompatibleException">Thrown if the current provider is not MySQL.</exception>
     public NormConnectionBuilder SetPassword(string password)
     {
         if (DatabaseProviderType != DatabaseProviderType.MySql)
@@ -65,6 +103,12 @@ public class NormConnectionBuilder(DatabaseProviderType databaseType)
         return this;
     }
     
+    /// <summary>
+    /// Sets the database name for MySQL connections.
+    /// </summary>
+    /// <param name="database">The name of the MySQL database to connect to.</param>
+    /// <returns>The builder instance for chaining calls.</returns>
+    /// <exception cref="ProviderIncompatibleException">Thrown if the current provider is not MySQL.</exception>
     public NormConnectionBuilder SetDatabase(string database)
     {
         if (DatabaseProviderType != DatabaseProviderType.MySql)
@@ -77,6 +121,12 @@ public class NormConnectionBuilder(DatabaseProviderType databaseType)
         return this;
     }
     
+    /// <summary>
+    /// Sets the port number for MySQL connections.
+    /// </summary>
+    /// <param name="port">The port number of the MySQL server.</param>
+    /// <returns>The builder instance for chaining calls.</returns>
+    /// <exception cref="ProviderIncompatibleException">Thrown if the current provider is not MySQL.</exception>
     public NormConnectionBuilder SetPort(int port)
     {
         if (DatabaseProviderType != DatabaseProviderType.MySql)
@@ -89,6 +139,11 @@ public class NormConnectionBuilder(DatabaseProviderType databaseType)
         return this;
     }
     
+    /// <summary>
+    /// Configures the builder to use an in-memory SQLite database.
+    /// </summary>
+    /// <returns>The builder instance for chaining calls.</returns>
+    /// <exception cref="ProviderIncompatibleException">Thrown if the current provider is not SQLite.</exception>
     public NormConnectionBuilder UseInMemoryDataSource()
     {
         if (DatabaseProviderType != DatabaseProviderType.Sqlite)
@@ -101,11 +156,21 @@ public class NormConnectionBuilder(DatabaseProviderType databaseType)
         return this;
     }
     
+    /// <summary>
+    /// Builds and automatically connects to the database.
+    /// </summary>
+    /// <returns>A connected INormConnection instance.</returns>
     public INormConnection BuildAndConnect()
     {
         return Build(true);
     }
     
+    /// <summary>
+    /// Builds the connection with optional automatic connection.
+    /// </summary>
+    /// <param name="autoConnect">If true, the connection will be opened automatically.</param>
+    /// <returns>An INormConnection instance, connected if autoConnect is true.</returns>
+    /// <exception cref="NotImplementedException">Thrown if the provider type is not supported.</exception>
     public INormConnection Build(bool autoConnect = false)
     {
         INormConnection connection;

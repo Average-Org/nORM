@@ -18,7 +18,6 @@ public class TruncateCollectionTests
         {
             Title = "Test",
             Description = "Test description",
-            AuthorId = 1,
             CreatedAt = DateTime.UtcNow
         };
 

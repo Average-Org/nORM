@@ -97,7 +97,6 @@ public class InsertStressTests
             {
                 Title = $"Test {i}",
                 Description = "Test description",
-                AuthorId = 1,
                 CreatedAt = timestamp
             };
 

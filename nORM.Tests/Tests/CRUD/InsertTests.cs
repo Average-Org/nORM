@@ -18,7 +18,6 @@ public class InsertTests
         {
             Title = "Test",
             Description = "Test description",
-            AuthorId = 1,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -39,7 +38,6 @@ public class InsertTests
         {
             Title = "Test",
             Description = "Test description",
-            AuthorId = 1,
             CreatedAt = DateTime.UtcNow
         };
         

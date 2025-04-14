@@ -18,7 +18,6 @@ public class DeleteTests
         {
             Title = "Test",
             Description = "Test description",
-            AuthorId = 1,
             CreatedAt = DateTime.UtcNow
         };
         
@@ -41,7 +40,6 @@ public class DeleteTests
             
             Title = "Test",
             Description = "Test description",
-            AuthorId = 1,
             CreatedAt = DateTime.UtcNow
             
         };
