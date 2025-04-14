@@ -7,12 +7,13 @@ using Xunit.Abstractions;
 namespace nORM.Tests.Tests.StressTests;
 
 [Collection("StressTests")]
-[Trait("Category","Stress Tests")]
-public class SqliteInsertStressTests
+[Trait("Category", "Stress Tests")]
+public class InsertStressTests
 {
     private readonly ITestOutputHelper _testOutputHelper;
     private readonly INormConnection _sharedMemoryConnection;
     private readonly INormConnection _sharedFileConnection;
+    private readonly INormConnection _sharedMySqlConnection;
 
     public static IEnumerable<object[]> InsertCounts =>
     [
@@ -21,7 +22,7 @@ public class SqliteInsertStressTests
         [100],
     ];
 
-    public SqliteInsertStressTests(ITestOutputHelper testOutputHelper)
+    public InsertStressTests(ITestOutputHelper testOutputHelper)
     {
         _testOutputHelper = testOutputHelper;
 
@@ -36,25 +37,26 @@ public class SqliteInsertStressTests
         _sharedFileConnection = new NormConnectionBuilder(DatabaseProviderType.Sqlite)
             .SetExplicitDataSource("stress_db.sqlite")
             .BuildAndConnect();
+        
+        _sharedMySqlConnection = Utilities.CreateNewMySqlConnection();
     }
 
     [Theory, MemberData(nameof(InsertCounts))]
-    public void InsertMemory_StressTest(int count) => RunStressTest(count, _sharedMemoryConnection);
+    public void InsertMemory_SqliteStressTest(int count) => RunStressTest(count, _sharedMemoryConnection);
 
     [Theory, MemberData(nameof(InsertCounts))]
-    public void InsertFileSource_StressTest(int count) => RunStressTest(count, _sharedFileConnection);
+    public void InsertFileSource_SqliteStressTest(int count) => RunStressTest(count, _sharedFileConnection);
+    
+    [Theory, MemberData(nameof(InsertCounts))]
+    public void InsertLocalHost_MySqlStressTest(int count) => RunStressTest(count, _sharedMySqlConnection);
 
     private void RunStressTest(int count, INormConnection connection)
     {
         var collection = connection.Collection<Post>();
         var now = DateTime.UtcNow;
 
-        GC.Collect();
-        GC.WaitForPendingFinalizers();
-        GC.Collect();
-
-        long memoryBefore = GC.GetTotalMemory(true);
-        int[] gcBefore = GetGcCounts();
+        long allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
+        int[] gcBefore = Utilities.GetGcCounts();
 
         var stopwatch = Stopwatch.StartNew();
         long totalInsertTime = 0;
@@ -67,13 +69,13 @@ public class SqliteInsertStressTests
 
         stopwatch.Stop();
 
-        long memoryAfter = GC.GetTotalMemory(true);
-        int[] gcAfter = GetGcCounts();
-        long memoryUsed = memoryAfter - memoryBefore;
+        long allocatedAfter = GC.GetAllocatedBytesForCurrentThread();
+        int[] gcAfter = Utilities.GetGcCounts();
+        long allocatedBytes = allocatedAfter - allocatedBefore;
 
         _testOutputHelper.WriteLine($"Inserted {count} posts, {iterations}x");
         _testOutputHelper.WriteLine($"Total time: {stopwatch.ElapsedMilliseconds} ms");
-        _testOutputHelper.WriteLine($"Memory used: {memoryUsed / 1024.0:F2} KB");
+        _testOutputHelper.WriteLine($"Total allocated: {allocatedBytes / 1024.0:F2} KB");
 
         for (int gen = 0; gen <= GC.MaxGeneration; gen++)
         {
@@ -81,7 +83,7 @@ public class SqliteInsertStressTests
             _testOutputHelper.WriteLine($"Gen {gen} GCs: {collections}");
         }
 
-        _testOutputHelper.WriteLine($"Average insert time: {totalInsertTime / iterations} ms");
+        _testOutputHelper.WriteLine($"Average insert iteration time: {totalInsertTime / iterations} ms");
     }
 
     private static long PerformInsert(ICollectionContext<Post> context, int count, DateTime timestamp)
@@ -99,7 +101,7 @@ public class SqliteInsertStressTests
                 CreatedAt = timestamp
             };
 
-            var inserted = context.Insert(post);
+            var inserted = context.Insert(post, transaction);
 
             Assert.NotNull(inserted);
             Assert.Equal(post.Title, inserted.Title);
@@ -110,17 +112,12 @@ public class SqliteInsertStressTests
         return stopwatch.ElapsedMilliseconds;
     }
 
-    private static int[] GetGcCounts() =>
-        Enumerable.Range(0, GC.MaxGeneration + 1)
-            .Select(GC.CollectionCount)
-            .ToArray();
-    
     [Fact]
     public void Dispose()
     {
         _sharedMemoryConnection.Dispose();
         _sharedFileConnection.Dispose();
-        
+
         _testOutputHelper.WriteLine("Connections disposed.");
     }
 }

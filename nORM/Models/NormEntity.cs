@@ -86,12 +86,28 @@ public abstract class NormEntity
             var thisValue = prop.GetValue(this);
             var otherValue = prop.GetValue(other);
 
-            // Normalize DateTime comparison as string
             if (thisValue is DateTime thisDateTime && otherValue is DateTime otherDateTime)
             {
-                var thisString = thisDateTime.ToString("o"); // ISO 8601
-                var otherString = otherDateTime.ToString("o");
-                if (thisString != otherString)
+                // Truncate to seconds
+                thisDateTime = new DateTime(
+                    thisDateTime.Year,
+                    thisDateTime.Month,
+                    thisDateTime.Day,
+                    thisDateTime.Hour,
+                    thisDateTime.Minute,
+                    thisDateTime.Second
+                );
+
+                otherDateTime = new DateTime(
+                    otherDateTime.Year,
+                    otherDateTime.Month,
+                    otherDateTime.Day,
+                    otherDateTime.Hour,
+                    otherDateTime.Minute,
+                    otherDateTime.Second
+                );
+
+                if (thisDateTime != otherDateTime)
                     return false;
             }
             else if (!Equals(thisValue, otherValue))
@@ -102,7 +118,7 @@ public abstract class NormEntity
 
         return true;
     }
-
+    
     public override int GetHashCode()
     {
         unchecked

@@ -46,10 +46,16 @@ public class SqlCollectionContext<T> : ICollectionContext<T> where T : NormEntit
 
     public T Insert(T entity)
     {
+        return Insert(entity, null);
+    }
+
+    public T Insert(T entity, IDbTransaction? transaction)
+    {
         var addQuery = _queryBuilder
             .GetInsertQuery(entity);
 
-        entity.SetId(_normConnection.ExecuteScalar(addQuery));
+        // Execute the insert query
+        entity.SetId(_normConnection.ExecuteScalar(addQuery, transaction));
 
         return entity;
     }
@@ -145,7 +151,9 @@ public class SqlCollectionContext<T> : ICollectionContext<T> where T : NormEntit
             }
             case DatabaseProviderType.MySql:
             {
-                convertedValue = DateTime.Parse(raw, null);
+                var parsed = DateTime.Parse(raw, null);
+                convertedValue = new DateTime(parsed.Year, parsed.Month, parsed.Day,
+                    parsed.Hour, parsed.Minute, parsed.Second);
                 break;
             }
             default:
@@ -182,11 +190,11 @@ public class SqlCollectionContext<T> : ICollectionContext<T> where T : NormEntit
         var properties = NormEntity.GetPropertiesSpan(typeof(T)).ToArray();
         List<DatabaseColumn> columns = ExtractColumnNames(tableInfoResults, properties.ToArray());
         var classPropertyColumns = GetClassPropertyColumns(properties);
-        
+
         foreach (var column in columns)
         {
             // Get the property that matches the column name
-            var property = properties.FirstOrDefault(x => 
+            var property = properties.FirstOrDefault(x =>
                 x.GetCustomAttribute<ColumnAttribute>()?.Name == column.Name);
 
             if (property == null)
@@ -194,19 +202,19 @@ public class SqlCollectionContext<T> : ICollectionContext<T> where T : NormEntit
                 DropColumn(normConnection, addQuery.CollectionContext, column.Name);
                 continue;
             }
-            
+
             var columnType = SqlQueryBuilder.GetSqlType(property.PropertyType,
                 normConnection.DatabaseProviderType);
-            
+
             // If the column type matches the expected type, skip
             if (column.Type.Equals(columnType, StringComparison.InvariantCultureIgnoreCase))
             {
                 continue;
             }
-            
+
             // Column type does not match, alter the column
             // SQLite does not support altering column types directly, so we need to create a new table
-            
+
             // DELETE the column first, then create a new one
             // with the correct type
             if (normConnection.DatabaseProviderType == DatabaseProviderType.Sqlite)
@@ -216,22 +224,25 @@ public class SqlCollectionContext<T> : ICollectionContext<T> where T : NormEntit
             }
             else
             {
-                AlterColumn(normConnection, addQuery.CollectionContext, column.Name, columnType);
+                AlterColumn(normConnection, addQuery.CollectionContext, column.Name, columnType, sqlBuilder);
             }
-
         }
-        
 
-        AddAnyMissingColumns(normConnection, properties, columnNames, addQuery);
+        AddAnyMissingColumns(normConnection, properties, columns.Select(x => x.Name).ToList(), addQuery);
     }
 
-    private static void AlterColumn(INormConnection normConnection, 
-        string addQueryCollectionContext, string columnName, string columnType, SqlQueryBuilder builder)
+    private static void AlterColumn(INormConnection normConnection,
+        string? collectionName, string columnName, string columnType, SqlQueryBuilder builder)
     {
+        if (collectionName == null)
+        {
+            return;
+        }
+
         var alterQuery = builder
-            .GetAlterTableTypeQuery(addQueryCollectionContext, columnName, columnType);
-        
-        normConnection.ExecuteNonQuery(new SqlExecutionProperties(alterQuery));
+            .GetAlterTableTypeQuery(collectionName, columnName, columnType);
+
+        normConnection.ExecuteNonQuery(alterQuery);
     }
 
     private static List<DatabaseColumn> ExtractColumnNames(IEnumerable<IDictionary<string, object>> tableInfoResults,

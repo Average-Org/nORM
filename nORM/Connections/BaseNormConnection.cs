@@ -1,4 +1,5 @@
 using System.Data;
+using System.Transactions;
 using nORM.Models;
 using nORM.Models.Context;
 using nORM.Models.Properties;
@@ -13,6 +14,8 @@ public abstract class BaseNormConnection : INormConnection
     public abstract INormConnection Connect();
     public abstract void ExecuteNonQuery(IExecutionProperties executionProperties);
     public abstract IDataReader ExecuteQuery(IExecutionProperties properties);
+    public abstract object ExecuteScalar(IExecutionProperties executionProperties, IDbTransaction? transaction = null);
+
     public abstract List<Dictionary<string, object>> Query(IExecutionProperties executionProperties);
 
     public ICollectionContext<T> Collection<T>() where T : NormEntity
@@ -26,7 +29,6 @@ public abstract class BaseNormConnection : INormConnection
         return (ICollectionContext<T>)_collectionContexts[typeof(T)];
     }
 
-    public abstract object ExecuteScalar(IExecutionProperties executionProperties);
     public abstract IDbTransaction BeginTransaction();
     
     public abstract void Dispose();

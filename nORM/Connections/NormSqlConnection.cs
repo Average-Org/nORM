@@ -85,7 +85,7 @@ public abstract class NormSqlConnection(string connectionString) : BaseNormConne
         return result;
     }
 
-    public override object ExecuteScalar(IExecutionProperties executionProperties)
+    public override object ExecuteScalar(IExecutionProperties executionProperties, IDbTransaction? transaction = null)
     {
         if (executionProperties is not SqlExecutionProperties { } sqlQuery)
         {
@@ -94,6 +94,11 @@ public abstract class NormSqlConnection(string connectionString) : BaseNormConne
         }
 
         var command = GetDbConnection().CreateCommand();
+        if (DatabaseProviderType == DatabaseProviderType.MySql)
+        {
+            command.Transaction = transaction;
+        }
+        
         command.CommandText = sqlQuery.ToString();
         return command.ExecuteScalar() ?? DBNull.Value;
     }

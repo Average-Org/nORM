@@ -20,4 +20,9 @@ public class Utilities
             .SetDatabase("testdb")
             .BuildAndConnect();
     }
+    
+    internal static int[] GetGcCounts() =>
+        Enumerable.Range(0, GC.MaxGeneration + 1)
+            .Select(GC.CollectionCount)
+            .ToArray();
 }

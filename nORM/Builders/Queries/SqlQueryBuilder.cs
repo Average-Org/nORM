@@ -40,7 +40,9 @@ public class SqlQueryBuilder : QueryBuilder
 
     public IExecutionProperties GetAlterTableTypeQuery(string collectionName, string columnName, string columnType)
     {
-        
+        currentQuery = new StringBuilder();
+        currentQuery.Append($"ALTER TABLE {collectionName} ALTER COLUMN {columnName} TYPE {columnType};");
+        return new SqlExecutionProperties(currentQuery, collectionName);
     }
     
     private void ParseExpression(Expression expr, List<string> conditions)
@@ -156,7 +158,7 @@ public class SqlQueryBuilder : QueryBuilder
     
     public virtual IExecutionProperties GetInsertQuery<T>(T entity)
     {
-        currentQuery = new();
+        currentQuery = new StringBuilder();
         var type = typeof(T);
         
         var tableName = NormEntity.GetCollectionName(type);
@@ -201,17 +203,9 @@ public class SqlQueryBuilder : QueryBuilder
             }
             
             var value = property.GetValue(entity);
-            if(value is DateTime dt)
+            if(value is DateTime dateTime)
             {
-                if (DatabaseProviderType == DatabaseProviderType.Sqlite)
-                {
-                    dt = dt.ToLocalTime();
-                    value = dt.ToUniversalTime().ToString("o");
-                }
-                else if(DatabaseProviderType == DatabaseProviderType.MySql)
-                {
-                    value = dt.ToString("yyyy-MM-dd HH:mm:ss");
-                }
+                value = HandleDateTimeValue(dateTime, value);
             }
             currentQuery.Append($"'{value}', ");
         }
@@ -221,6 +215,28 @@ public class SqlQueryBuilder : QueryBuilder
         
         return new SqlExecutionProperties(currentQuery, tableName);
     }
+
+    private object HandleDateTimeValue(DateTime dateTime, object value)
+    {
+        switch (DatabaseProviderType)
+        {
+            case DatabaseProviderType.Sqlite:
+            {
+                dateTime = dateTime.ToLocalTime();
+                value = dateTime.ToUniversalTime().ToString("o");
+                break;
+            }
+            case DatabaseProviderType.MySql:
+            {
+                value = dateTime.ToString("yyyy-MM-dd HH:mm:ss");
+                value = $"{value}";
+                break;
+            }
+        }
+
+        return value;
+    }
+
     public virtual IExecutionProperties GetTableInfoQuery<T>()
     {
         currentQuery = new();

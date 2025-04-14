@@ -6,6 +6,7 @@ namespace nORM.Models.Context;
 public interface ICollectionContext<T> where T : NormEntity
 {
     public T Insert(T entity);
+    public T Insert(T entity, IDbTransaction transaction);
     public bool Remove(T entity);
     public bool Truncate();
     public IDbTransaction BeginTransaction();
